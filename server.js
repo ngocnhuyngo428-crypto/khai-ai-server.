@@ -1,4 +1,3 @@
-
 const http = require("http");
 
 const PORT = process.env.PORT || 10000;
@@ -36,13 +35,16 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (!API_KEY) {
+    console.error("Missing GEMINI_API_KEY");
     res.writeHead(500);
     return res.end(JSON.stringify({ error: "Missing API key" }));
   }
 
   try {
     let body = "";
-    for await (const chunk of req) body += chunk;
+    for await (const chunk of req) {
+      body += chunk;
+    }
 
     const data = JSON.parse(body);
     const messages = Array.isArray(data.messages)
@@ -51,7 +53,8 @@ const server = http.createServer(async (req, res) => {
 
     const contents = messages.map((m) => ({
       role: m.role === "assistant" || m.role === "model"
-        ? "model" : "user",
+        ? "model"
+        : "user",
       parts: [{ text: String(m.text || m.content || "") }]
     })).filter(m => m.parts[0].text.trim());
 
@@ -76,6 +79,7 @@ const server = http.createServer(async (req, res) => {
     const result = await response.json();
 
     if (!response.ok) {
+      console.error("Gemini API error:", result);
       throw new Error(result.error?.message || "Gemini API error");
     }
 
@@ -87,6 +91,7 @@ const server = http.createServer(async (req, res) => {
     res.end(JSON.stringify({ reply }));
 
   } catch (error) {
+    console.error("Chat error:", error);
     res.writeHead(500, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ error: error.message }));
   }
